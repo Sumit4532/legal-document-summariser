@@ -31,8 +31,8 @@ def get_entities(text):
 def get_clauses(text):
     keywords = {
         "termination clause": ["terminat", "end of agreement"],
-        "payment clause": ["payment", "invoice", "retainer"],
-        "penalty clause": ["penalty", "late fee"],
+        "payment clause": ["invoice", "retainer", "EMI", "installment"],
+        "penalty clause": ["penalty", "late fee", "late payment", "overdue", "bounce", "withheld"],
         "confidentiality clause": ["confidential", "non-disclosure"],
         "liability clause": ["liability", "liable", "indemnif"],
         "intellectual property clause": ["intellectual property", "copyright"],
