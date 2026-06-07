@@ -1,15 +1,14 @@
 import streamlit as st
 import pdfplumber
-import spacy
 import re
 from collections import Counter
 
-# Load spacy
-@st.cache_resource
-def load_nlp():
-    import subprocess
-    subprocess.run(["python", "-m", "spacy", "download", "en_core_web_sm"], check=True)
-    return spacy.load("en_core_web_sm")
+def get_entities(text):
+    ents = {"parties": [], "dates": [], "locations": [], "organizations": [], "money": []}
+    ents["dates"] = re.findall(r'\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b|\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4}\b', text)
+    ents["money"] = re.findall(r'(?:INR|Rs\.?|USD|\$)\s?[\d,]+(?:\.\d+)?(?:\s?(?:Lakhs?|Crores?|million|billion))?', text)
+    ents["organizations"] = re.findall(r'\b[A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)*(?:\s+(?:Ltd|Pvt|Inc|Corp|LLC|LLP|Solutions|Technologies|Services|Group))\b', text)
+    return {k: list(set(v))[:5] for k, v in ents.items()}
 
 def extract_text(pdf_file):
     text = ""
