@@ -7,6 +7,8 @@ from collections import Counter
 # Load spacy
 @st.cache_resource
 def load_nlp():
+    import subprocess
+    subprocess.run(["python", "-m", "spacy", "download", "en_core_web_sm"], check=True)
     return spacy.load("en_core_web_sm")
 
 def extract_text(pdf_file):
