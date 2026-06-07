@@ -3,13 +3,6 @@ import pdfplumber
 import re
 from collections import Counter
 
-def get_entities(text):
-    ents = {"parties": [], "dates": [], "locations": [], "organizations": [], "money": []}
-    ents["dates"] = re.findall(r'\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b|\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4}\b', text)
-    ents["money"] = re.findall(r'(?:INR|Rs\.?|USD|\$)\s?[\d,]+(?:\.\d+)?(?:\s?(?:Lakhs?|Crores?|million|billion))?', text)
-    ents["organizations"] = re.findall(r'\b[A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)*(?:\s+(?:Ltd|Pvt|Inc|Corp|LLC|LLP|Solutions|Technologies|Services|Group))\b', text)
-    return {k: list(set(v))[:5] for k, v in ents.items()}
-
 def extract_text(pdf_file):
     text = ""
     with pdfplumber.open(pdf_file) as pdf:
@@ -28,26 +21,22 @@ def summarise(text):
     top = sorted(sorted(scores, key=scores.get, reverse=True)[:5])
     return '. '.join([sentences[i] for i in top]) + '.'
 
-def get_entities(text, nlp):
-    doc = nlp(text[:5000])
-    ents = {"parties": [], "dates": [], "locations": [], "organizations": [], "money": []}
-    for ent in doc.ents:
-        if ent.label_ == "PERSON": ents["parties"].append(ent.text)
-        elif ent.label_ == "DATE": ents["dates"].append(ent.text)
-        elif ent.label_ in ["GPE", "LOC"]: ents["locations"].append(ent.text)
-        elif ent.label_ == "ORG": ents["organizations"].append(ent.text)
-        elif ent.label_ == "MONEY": ents["money"].append(ent.text)
-    return {k: list(set(v)) for k, v in ents.items()}
+def get_entities(text):
+    ents = {"dates": [], "organizations": [], "money": []}
+    ents["dates"] = re.findall(r'\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4}\b|\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b', text)
+    ents["money"] = re.findall(r'(?:INR|Rs\.?|USD|\$)\s?[\d,]+(?:\.\d+)?(?:\s?(?:Lakhs?|Crores?|million|billion))?', text)
+    ents["organizations"] = re.findall(r'\b[A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)*(?:\s+(?:Ltd|Pvt|Inc|Corp|LLC|LLP|Solutions|Technologies|Services|Group))\b', text)
+    return {k: list(set(v))[:5] for k, v in ents.items()}
 
 def get_clauses(text):
     keywords = {
-        "termination clause": ["terminat", "end of agreement", "expir"],
-        "payment clause": ["payment", "pay ", "invoice", "retainer"],
-        "penalty clause": ["penalty", "late fee", "interest on"],
-        "confidentiality clause": ["confidential", "non-disclosure", "proprietary"],
+        "termination clause": ["terminat", "end of agreement"],
+        "payment clause": ["payment", "invoice", "retainer"],
+        "penalty clause": ["penalty", "late fee"],
+        "confidentiality clause": ["confidential", "non-disclosure"],
         "liability clause": ["liability", "liable", "indemnif"],
-        "intellectual property clause": ["intellectual property", "copyright", "ownership"],
-        "governing law clause": ["governing law", "jurisdiction", "arbitration"],
+        "intellectual property clause": ["intellectual property", "copyright"],
+        "governing law clause": ["governing law", "jurisdiction"],
     }
     sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+', text) if len(s.strip()) > 20]
     clauses = []
@@ -65,7 +54,6 @@ def get_risk(clauses):
     level = "High" if score > 60 else "Medium" if score > 30 else "Low"
     return {"score": score, "level": level}
 
-# UI
 st.set_page_config(page_title="LegalAI", page_icon="⚖️", layout="wide")
 st.title("⚖️ LegalAI — Legal Document Summariser")
 st.markdown("Upload any legal document — AI will summarise, classify clauses & score risk")
@@ -76,10 +64,9 @@ if uploaded_file is not None:
     st.success(f"✅ Selected: {uploaded_file.name}")
     if st.button("🔍 Analyse Document", type="primary"):
         with st.spinner("AI processing document..."):
-            nlp = load_nlp()
             text = extract_text(uploaded_file)
             summary = summarise(text)
-            entities = get_entities(text, nlp)
+            entities = get_entities(text)
             clauses = get_clauses(text)
             risk = get_risk(clauses)
             key_points = [s.strip() for s in re.split(r'(?<=[.!?])\s+', text) if len(s.strip()) > 40][:5]
@@ -101,10 +88,10 @@ if uploaded_file is not None:
                 st.markdown(f"• {pt}")
         with col2:
             st.subheader("👥 Entities Found")
-            icons = {"parties": "👤", "dates": "📅", "locations": "📍", "organizations": "🏢", "money": "💰"}
+            icons = {"dates": "📅", "organizations": "🏢", "money": "💰"}
             for key, val in entities.items():
                 if val:
-                    st.markdown(f"**{icons.get(key, '📌')} {key}:** {', '.join(val)}")
+                    st.markdown(f"**{icons.get(key,'📌')} {key}:** {', '.join(val)}")
 
         st.divider()
         st.subheader("🔍 Detected Clauses")
